@@ -21,7 +21,7 @@ conn = JsonConnection()
 conn.login(username = 'root', password = '')
 session_id = conn.session_id
 project_name = 'Monterrey'
-network_name = 'Monterrey_sistema'
+network_name = 'base_network'
 
 def get_project_by_name(conn, project_name):
         return conn.call('get_project_by_name', {'project_name':project_name})
@@ -67,7 +67,7 @@ def links_geojson(links, coords):
                 else:
                         ftype_name = 'UNASSIGNED'
                         template_name = 'UNASSIGNED'
-                f = {'type':'LineString',
+                f = {'type':'Feature',
                      'geometry':{ 'type': 'LineString',
                                   'coordinates': [coords[n1],coords[n2]] },
                      'properties':{'name':l.name,
@@ -97,7 +97,7 @@ def make_nodes(shapes):
         for s in shapes:
                 x, y = s['geometry']['coordinates']
                 n = dict(
-                        id = -s['id'],
+                        id = -1,
                         #name = s['properties']['name'],
                         name = 'Point' + str(random.randrange(0,1000)),
                         description = 'It\'s a new node!',
@@ -111,7 +111,7 @@ def make_nodes(shapes):
 # need to account for multisegment lines
 # for now, this assumes links lack vertices
 def make_links(polylines, coords):
-        d = 3 # rounding decimal points to match link coords with nodes.
+        d = 4 # rounding decimal points to match link coords with nodes.
         # p.s. This is annoying. It would be good to have geographic/topology capabilities built in to Hydra
         nlookup = {(round(x,d), round(y,d)): k for k, [x, y] in coords.items()}
         links = []
@@ -122,7 +122,7 @@ def make_links(polylines, coords):
                         xys.append(xy)
                 
                 l = dict(
-                        id = -pl['id'],
+                        id = -1,
                         #name = pl['properties']['name'],
                         name = 'Link' + str(random.randrange(0,1000)),
                         description = 'It\'s a new link!',
@@ -185,6 +185,20 @@ else:
         )
         network = conn.call('add_network', {'net':net})
 activated = conn.call('activate_network', {'network_id':network.id})
+
+#polyline = dict(
+        #type = 'Feature',
+        #geometry = {
+                #'type': 'Point',
+                #'coordinates': [[-99.7012322, 25.0], [-101.2172767, 25.95]]
+                #},
+        #properties = {
+                #"name": "Dinagat Islands"
+                #}
+        #)
+#polylines = [polyline]
+#coords = get_coords(network)
+#links = make_links(polylines, coords)
 
 # get features (blank if network is new)
 features = get_features(network)

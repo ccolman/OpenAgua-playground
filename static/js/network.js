@@ -122,16 +122,13 @@ $('button#clear_edits').bind('click', function() {
 });
 
 // get shapes to add
-var layerid = 0;
 var getJson = function(items) {
     var shapes = [];
     var layerJson;
     
     items.eachLayer(function(layer) {
-        layerJson = {id: layerid};
-        $.extend(layerJson, layer.toGeoJSON());
+        layerJson = layer.toGeoJSON();
         shapes.push(layerJson);
-        layerid = layerid + 1;
     });
 
     var jsonshapes = JSON.stringify({shapes: shapes});
