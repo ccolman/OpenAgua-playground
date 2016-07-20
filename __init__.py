@@ -17,12 +17,11 @@ from HydraLib.PluginLib import JsonConnection
 # connect - this should be done through the interface
 #
 
-#conn = JsonConnection(url='www.openaguadss.org')
 conn = JsonConnection()
 conn.login(username = 'root', password = '')
 session_id = conn.session_id
 project_name = 'Monterrey'
-network_name = 'base network'
+network_name = 'Monterrey_sistema'
 
 def get_project_by_name(conn, project_name):
         return conn.call('get_project_by_name', {'project_name':project_name})
@@ -32,14 +31,7 @@ def get_network_by_name(conn, project_name, network_name):
         return conn.call('get_network_by_name', {'project_id':project.id, 'network_name':network_name})
 
 def get_network(conn, network_id):
-        return conn.call('get_network', {'network_id':network_id})
-
-# get project ID
-try:
-        project = get_project_by_name(conn, project_name)
-except: # project doesn't exist, so let's create it
-        proj = dict(name = project_name)
-        project = conn.call('add_project', {'project':proj})      
+        return conn.call('get_network', {'network_id':network_id})    
         
 # convert hydra nodes to geoJson for Leaflet
 def nodes_geojson(nodes, coords):
@@ -170,7 +162,31 @@ def get_features(network):
         features = nodes + links
         return features
 
-network = get_network_by_name(conn, project_name, network_name)
+#
+# Set up project. To be deleted once we can integrate into the UI.
+#
+
+# load / create project
+try:
+        project = get_project_by_name(conn, project_name)
+except: # project doesn't exist, so let's create it
+        proj = dict(name = project_name)
+        project = conn.call('add_project', {'project':proj})  
+
+# load / create network
+exists = conn.call('network_exists', {'project_id':project.id, 'network_name':network_name})
+if exists=='Y':
+        network = get_network_by_name(conn, project_name, network_name)
+else:
+        net = dict(
+                project_id = project.id,
+                name = network_name,
+                description = 'Prototype DSS network for Monterrey'
+        )
+        network = conn.call('add_network', {'net':net})
+activated = conn.call('activate_network', {'network_id':network.id})
+
+# get features (blank if network is new)
 features = get_features(network)
 
 #
