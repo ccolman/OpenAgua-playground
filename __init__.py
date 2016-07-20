@@ -27,8 +27,12 @@ network_name = 'base network'
 def get_project_by_name(conn, project_name):
         return conn.call('get_project_by_name', {'project_name':project_name})
 
-def get_network_by_name(conn, project_id, network_name):
-        return conn.call('get_network_by_name', {'project_id':project_id, 'network_name':network_name})
+def get_network_by_name(conn, project_name, network_name):
+        project = get_project_by_name(conn, project_name)
+        return conn.call('get_network_by_name', {'project_id':project.id, 'network_name':network_name})
+
+def get_network(conn, network_id):
+        return conn.call('get_network', {'network_id':network_id})
 
 # get project ID
 try:
@@ -76,7 +80,8 @@ def links_geojson(links, coords):
                                   'coordinates': [coords[n1],coords[n2]] },
                      'properties':{'name':l.name,
                                    'description':l.description,
-                                   'linetype':ftype.name,
+                                   'linetype':ftype_name,
+                                   'template':template_name,
                                    'popupContent':'TEST'}}
                 
                 gj.append(f)
@@ -92,9 +97,9 @@ def get_coords(network):
 
 # get shapes of type ftype
 def get_shapes(shapes, ftype):
-        return [s for s in shapes if s['type']==ftype]
+        return [s for s in shapes if s['geometry']['type']==ftype]
 
-# add features - formatted as geoJson - from Leaflet
+# make nodes - formatted as geoJson - from Leaflet
 def make_nodes(shapes):
         nodes = []
         for s in shapes:
@@ -110,42 +115,63 @@ def make_nodes(shapes):
                 nodes.append(n)
         return nodes
 
+# make links - formatted as geoJson - from Leaflet
+# need to account for multisegment lines
+# for now, this assumes links lack vertices
+def make_links(polylines, coords):
+        d = 3 # rounding decimal points to match link coords with nodes.
+        # p.s. This is annoying. It would be good to have geographic/topology capabilities built in to Hydra
+        nlookup = {(round(x,d), round(y,d)): k for k, [x, y] in coords.items()}
+        links = []
+        for pl in polylines:
+                xys = []
+                for [x,y] in pl['geometry']['coordinates']:
+                        xy = (round(x,d), round(y,d))
+                        xys.append(xy)
+                
+                l = dict(
+                        id = -pl['id'],
+                        #name = pl['properties']['name'],
+                        name = 'Link' + str(random.randrange(0,1000)),
+                        description = 'It\'s a new link!',
+                        node_1_id = nlookup[xys[0]],
+                        node_2_id = nlookup[xys[1]]
+                )
+                links.append(l)
+        return links
+
+def add_network(conn, project_name):
+        network = conn.call('add_network', {'net':{'nodes':[], 'links':[]}})       
+
 # use this to add shapes from Leaflet to Hydra
 def add_features(conn, network_id, shapes):
         
         # modify to account for possibly no network... create network instead of add node
         
         # convert geoJson to Hydra features & write to Hydra
-        points = get_shapes(shapes, 'Feature')
-        nodes = make_nodes(points)
+        points = get_shapes(shapes, 'Point')
+        polylines = get_shapes(shapes, 'LineString')    
         
-        polylines = get_shapes(shapes, 'Polyline')
-        #links = make_links(polylines)
-        links = []
-        
-        if network_id and points:
-                nodes = conn.call('add_nodes', {'network_id': network_id, 'nodes': nodes})
-        elif network_id and polylines:
-                links = conn.call('add_links', {'network_id': network_id, 'links': links})
-        else:
-                network = conn.call('add_network', {'net':{'nodes':nodes, 'links':links}})
-        
-def get_network_features(conn, project_name, network_name):
-        project = get_project_by_name(conn, project_name)
-        project_id = project.id
-        
-        try:
-                network = get_network_by_name(conn, project_id, network_name)
-                coords = get_coords(network)
-                nodes = nodes_geojson(network.nodes, coords)
-                links = links_geojson(network.links, coords)
-                features = nodes + links  
-        except:
-                network = None
-                features = []
-        return network, features
+        if points:
+                nodes = make_nodes(points)
+                if nodes:
+                        nodes = conn.call('add_nodes', {'network_id': network_id, 'nodes': nodes})
+        if polylines:
+                network = get_network(conn, network_id)
+                coords = get_coords(network)                   
+                links = make_links(polylines, coords)
+                if links:                         
+                        links = conn.call('add_links', {'network_id': network_id, 'links': links})
 
-network, features = get_network_features(conn, project_name, network_name)
+def get_features(network):
+        coords = get_coords(network)
+        nodes = nodes_geojson(network.nodes, coords)
+        links = links_geojson(network.links, coords)
+        features = nodes + links
+        return features
+
+network = get_network_by_name(conn, project_name, network_name)
+features = get_features(network)
 
 #
 # Flask app
@@ -162,13 +188,12 @@ def index():
 
 @app.route('/_load_network')
 def load_network():
-        network, features = get_network_features(conn, project_name, network_name)
-        if not network:
-                status_id = 0
-                status_message = 'No network to load'
-        else:
-                status_id = 1
-                status_message = 'Network "%s" loaded' % network_name
+        network = get_network_by_name(conn, project_name, network_name)
+        features = get_features(network)
+        
+        status_id = 1
+        status_message = 'Network "%s" loaded' % network_name
+        
         features = json.dumps(features)
         result = dict( status_id = status_id, status_message = status_message, features = features )
         result_json = jsonify(result=result)
@@ -177,22 +202,18 @@ def load_network():
 @app.route('/_save_network')
 def save_network():
         
-        network, features = get_network_features(conn, project_name, network_name)
+        network = get_network_by_name(conn, project_name, network_name)
+        features = get_features(network)
         
         new_features = request.args.get('new_features')
         new_features = json.loads(new_features)['shapes']        
         
         if new_features:
-                if not network:
-                        add_features(conn, None, new_features)
-                        network, features = get_network_features(conn, project_name, network_name)
-                        status_id = 0
-                        status_message = 'New network created'        
-                else:
-                        add_features(conn, network.id, new_features)
-                        network, features = get_network_features(conn, project_name, network_name)
-                        status_id = 1
-                        status_message = 'Edits saved'
+                add_features(conn, network.id, new_features)
+                network = get_network(conn, network.id) # get updated network
+                features = get_features(network) # get updated features
+                status_id = 1
+                status_message = 'Edits saved'
         else:
                 status_id = 2
                 status_message = 'No edits detected'

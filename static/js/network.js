@@ -58,10 +58,10 @@ map.addControl(drawControl);
 
 // snapping
 var guideLayers = new Array();
-//guideLayers.push(currentItems);
+guideLayers.push(currentItems);
 drawControl.setDrawingOptions({
-    marker: { guideLayers: guideLayers, snapDistance: 10 },
-    polyline: { guideLayers: guideLayers, snapDistance: 10 },
+    marker: { guideLayers: guideLayers, snapDistance: 15 },
+    polyline: { guideLayers: guideLayers, snapDistance: 15 },
 });
 
 map.on('draw:created', function (e) {
