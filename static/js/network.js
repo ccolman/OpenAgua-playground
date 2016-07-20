@@ -90,10 +90,12 @@ map.on('draw:edited', function (e) {
 // button - save edits
 // if successful, need to update map with data.result.network_data
 $('button#save_edits').bind('click', function() {
-  $.getJSON($SCRIPT_ROOT + '/_save_network', {
-    new_features: getJson(newItems)
-  }, function(data) {
-    $("#save_status").text(data.result.features);
+  $.getJSON($SCRIPT_ROOT + '/_save_network', {new_features: getJson(newItems)}, function(data) {
+    
+    currentItems.clearLayers();
+    currentItems.addData(data.features);
+    
+    $("#save_status").text(data.result.status_message);
   });
   return false;
 });

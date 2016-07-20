@@ -54,7 +54,7 @@ def nodes_geojson(nodes, coords):
                                        'coordinates':coords[n.id]},
                            'properties':{'name':n.name,
                                          'description':n.description,
-                                         'ftype':ftype_name,
+                                         'nodetype':ftype_name,
                                          'template':template_name,
                                          'popupContent':'TEST'}} # hopefully this can be pretty fancy
                 gj.append(f)
@@ -73,10 +73,11 @@ def links_geojson(links, coords):
                         ftype_name = 'UNASSIGNED'
                         template_name = 'UNASSIGNED'
                 f = {'type':'LineString',
-                     'coordinates': [coords[n1],coords[n2]],
+                     'geometry':{ 'type': 'LineString',
+                                  'coordinates': [coords[n1],coords[n2]] },
                      'properties':{'name':l.name,
                                    'description':l.description,
-                                   'ftype':ftype.name,
+                                   'linetype':ftype.name,
                                    'popupContent':'TEST'}}
                 
                 gj.append(f)
@@ -92,39 +93,44 @@ def get_coords(network):
 
 # get shapes of type ftype
 def get_shapes(shapes, ftype):
-        features = []
-        for s in shapes['shapes']:
-                if s['type']==ftype:
-                        features.append(s)
-        return features
+        return [s for s in shapes if s['type']==ftype]
 
 # add features - formatted as geoJson - from Leaflet
 def make_nodes(shapes):
         nodes = []
         for s in shapes:
                 x, y = s['geometry']['coordinates']
-                node = dict(
+                n = dict(
                         id = -s['id'],
-                        name = s['properties']['name'],
+                        #name = s['properties']['name'],
+                        name = 'Point' + str(random.randrange(0,1000)),
                         description = 'It\'s a new node!',
-                        x = x,
-                        y = y
+                        x = str(x),
+                        y = str(y)
                 )
-                nodes.append(node)
+                nodes.append(n)
         return nodes
 
 # use this to add shapes from Leaflet to Hydra
-def add_features(conn, shapes):
+def add_features(conn, network_id, shapes):
         
-        # convert geoJson to Hydra features
-        nodes = make_nodes(get_shapes(shapes, 'Feature'))
-        links = make_links(get_shapes(shapes, 'Polyline'))
+        # modify to account for possibly no network... create network instead of add node
         
-        # add new features to Hydra
-        if len(nodes):
-                nodes = conn.call('add_nodes', {'nodes':nodes})
-        if len(links):
-                links = conn.call('add_links', {'links':links})
+        # convert geoJson to Hydra features & write to Hydra
+        points = get_shapes(shapes, 'Feature')
+        nodes = make_nodes(points)
+        
+        polylines = get_shapes(shapes, 'Polyline')
+        #links = make_links(polylines)
+        links = []
+        
+        if network_id and points:
+                nodes = conn.call('add_nodes', {'network_id': network_id, 'nodes': nodes})
+        elif network_id and polylines:
+                links = conn.call('add_links', {'network_id': network_id, 'links': links})
+        else:
+                network = conn.call('add_network', {'net':{'nodes':nodes, 'links':links}})
+        
        
 # add initial network data       
 # update existing network - TEST - Hydra Platform does not work when adding / modifying networks
@@ -145,13 +151,13 @@ def get_network_features(conn, project_id, network_name):
                 coords = get_coords(network)
                 nodes = nodes_geojson(network.nodes, coords)
                 links = links_geojson(network.links, coords)
-                features = nodes + links     
+                features = nodes + links  
         except:
                 network = None
                 features = []
-        return features
+        return network, features
 
-features = get_network_features(conn, project_id, network_name)
+network, features = get_network_features(conn, project_id, network_name)
 
 #
 # Flask app
@@ -169,16 +175,30 @@ def index():
 
 @app.route('/_save_network')
 def save_network():
-        new_features = request.args.get('new_features')
-        #add_features(conn, new_features)
         
-        # we are passing back the entire updated network
-        #features = get_network_features(conn, project_id, network_name)
-        features = new_features
+        network, features = get_network_features(conn, project_id, network_name)
+        
+        new_features = request.args.get('new_features')
+        new_features = json.loads(new_features)['shapes']        
+        
+        if not network and new_features:
+                #add_features(conn, None, new_features)
+                status_id = 0
+                status_message = 'New network created'        
+        if network and new_features:
+                add_features(conn, network.id, new_features)
+                status_id = 1
+                status_message = 'Edits saved'
+        else:
+                status_id = 2
+                status_message = 'No edits detected'
+
+        # get updated network and features
+        network, features = get_network_features(conn, project_id, network_name)
         
         result = dict(
-                status_id = 1,
-                status_message = 'Edits saved! (not really - this is just a test message)',
+                status_id = status_id,
+                status_message = status_message,
                 features = features
                 )
         
