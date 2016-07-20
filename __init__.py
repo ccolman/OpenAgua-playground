@@ -35,8 +35,7 @@ try:
         project = get_project_by_name(conn, project_name)
 except: # project doesn't exist, so let's create it
         proj = dict(name = project_name)
-        project = conn.call('add_project', {'project':proj})
-project_id = project.id       
+        project = conn.call('add_project', {'project':proj})      
         
 # convert hydra nodes to geoJson for Leaflet
 def nodes_geojson(nodes, coords):
@@ -131,21 +130,10 @@ def add_features(conn, network_id, shapes):
         else:
                 network = conn.call('add_network', {'net':{'nodes':nodes, 'links':links}})
         
-       
-# add initial network data       
-# update existing network - TEST - Hydra Platform does not work when adding / modifying networks
-#def make_test_shapes():
-        #shapes = []
-        #for i in range(3):
-                #x = str(random.uniform(-105,-95))
-                #y = str(random.uniform(24,26))
-                #name = "Res" + str(random.randrange(1,1000))
-                #shape = {"id":1,"type":"Feature","properties":{"name":name,"feature_type":"Reservoir"},"geometry":{"type":"Point","coordinates":[x,y]}}
-                #shapes.append(shape)
-        #shapes = {"shapes": shapes}
-        #return shapes
-
-def get_network_features(conn, project_id, network_name):
+def get_network_features(conn, project_name, network_name):
+        project = get_project_by_name(conn, project_name)
+        project_id = project.id
+        
         try:
                 network = get_network_by_name(conn, project_id, network_name)
                 coords = get_coords(network)
@@ -157,7 +145,7 @@ def get_network_features(conn, project_id, network_name):
                 features = []
         return network, features
 
-network, features = get_network_features(conn, project_id, network_name)
+network, features = get_network_features(conn, project_name, network_name)
 
 #
 # Flask app
@@ -170,32 +158,48 @@ def index():
         return render_template('index.html',
                                session_id=session_id,
                                project_name=project_name,
-                               network_name=network_name,
-                               features=features)
+                               network_name=network_name)
+
+@app.route('/_load_network')
+def load_network():
+        network, features = get_network_features(conn, project_name, network_name)
+        if not network:
+                status_id = 0
+                status_message = 'No network to load'
+        else:
+                status_id = 1
+                status_message = 'Network "%s" loaded' % network_name
+        features = json.dumps(features)
+        result = dict( status_id = status_id, status_message = status_message, features = features )
+        result_json = jsonify(result=result)
+        return result_json
 
 @app.route('/_save_network')
 def save_network():
         
-        network, features = get_network_features(conn, project_id, network_name)
+        network, features = get_network_features(conn, project_name, network_name)
         
         new_features = request.args.get('new_features')
         new_features = json.loads(new_features)['shapes']        
         
-        if not network and new_features:
-                #add_features(conn, None, new_features)
-                status_id = 0
-                status_message = 'New network created'        
-        if network and new_features:
-                add_features(conn, network.id, new_features)
-                status_id = 1
-                status_message = 'Edits saved'
+        if new_features:
+                if not network:
+                        add_features(conn, None, new_features)
+                        network, features = get_network_features(conn, project_name, network_name)
+                        status_id = 0
+                        status_message = 'New network created'        
+                else:
+                        add_features(conn, network.id, new_features)
+                        network, features = get_network_features(conn, project_name, network_name)
+                        status_id = 1
+                        status_message = 'Edits saved'
         else:
                 status_id = 2
                 status_message = 'No edits detected'
 
         # get updated network and features
-        network, features = get_network_features(conn, project_id, network_name)
         
+        features = json.dumps(features)
         result = dict(
                 status_id = status_id,
                 status_message = status_message,

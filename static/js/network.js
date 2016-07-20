@@ -9,12 +9,11 @@ var tilesurl = 'http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
         });
         
 // geoJson items from Hydra Server
-var currentItems = L.geoJson().addTo(map);
-currentItems.addData(currentItems_geoJson);
+var currentItems = new L.geoJson();
+map.addLayer(currentItems);
 
 var newItems = new L.FeatureGroup();
 map.addLayer(newItems);
-
 
 // add zoom buttons
 L.control.zoom({position:'topright'}).addTo(map);
@@ -59,7 +58,7 @@ map.addControl(drawControl);
 
 // snapping
 var guideLayers = new Array();
-guideLayers.push(currentItems);
+//guideLayers.push(currentItems);
 drawControl.setDrawingOptions({
     marker: { guideLayers: guideLayers, snapDistance: 10 },
     polyline: { guideLayers: guideLayers, snapDistance: 10 },
@@ -87,14 +86,26 @@ map.on('draw:edited', function (e) {
     console.log("Edited " + countOfEditedLayers + " layers");
 });
 
+// button - load existing network, if any
+$('button#load_network').bind('click', function() {
+  $.getJSON($SCRIPT_ROOT + '/_load_network', function(data) {
+    var currentItems_geoJson = JSON.parse(data.result.features);
+    currentItems.clearLayers();
+    currentItems.addData(currentItems_geoJson);
+    $("#load_status").text(data.result.status_message);
+    
+  });
+  return false;
+});
+
 // button - save edits
 // if successful, need to update map with data.result.network_data
 $('button#save_edits').bind('click', function() {
   $.getJSON($SCRIPT_ROOT + '/_save_network', {new_features: getJson(newItems)}, function(data) {
-    
+    var currentItems_geoJson = JSON.parse(data.result.features);
     currentItems.clearLayers();
-    currentItems.addData(data.features);
-    
+    newItems.clearLayers();
+    currentItems.addData(currentItems_geoJson); 
     $("#save_status").text(data.result.status_message);
   });
   return false;

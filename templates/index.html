@@ -38,14 +38,13 @@
 
 <!--network editor-->
 <div id="map-edit" style="width: 800px; height: 400px; border: thin solid black"></div>
+<button type="button" id="load_network">Load network</button>
 <button type="button" id="save_edits">Save</button>
 <button type="button" id="clear_edits">Clear edits</button>
-<div id="save_status">Network loaded.</div>
+<div id="load_status"></div>
+<div id="save_status"></div>
 
 <!--network updater-->
-<script>
-  var currentItems_geoJson = {{ features|tojson }};
-</script>
 <script src="{{ url_for('static', filename='js/network.js') }}"></script>
 
 </body>
