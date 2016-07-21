@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  
+  <title>OpenAgua Decision Support System{% block title %}{% endblock %}</title>
+  
+  {% include 'head.html' %}
+  {% include 'navbar.html' %}
+
+  </head>
+  
+  <body  {% block load %}{% endblock %}>
+    <div id="wrapper">
+      <div id="sidebar-wrapper" class="col-md-1">
+        {% include "sidebar.html" %}
+      </div>
+      <div id="main-wrapper" class="col-md-11 pull-right">
+        {% block content %}{% endblock %}</div>
+      </div>
+      <div id="footer">
+        {% include 'footer.html' %}
+      </div>
+    </div>  
+  </body>
+</html>

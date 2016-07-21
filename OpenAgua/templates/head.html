@@ -1,0 +1,35 @@
+<!--Jquery-->
+<script src="{{ url_for('static', filename='js/jquery-3.1.0.min.js') }}"></script>
+
+<!--Font Awesome-->
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" />
+
+<!--Bootstrap-->
+<link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-3.3.6/css/bootstrap.min.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-3.3.6/css/bootstrap-theme.min.css') }}" />
+<script src="{{ url_for('static', filename='lib/bootstrap-3.3.6/js/bootstrap.min.js') }}"></script>
+
+<!--Leaflet-->
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+<script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='leaflet/draw/leaflet.draw.css') }}" />
+<script src="{{ url_for('static', filename='leaflet/draw/leaflet.draw.js') }}"></script>
+<script src="{{ url_for('static', filename='leaflet/geometryutil/leaflet.geometryutil.js') }}"></script>
+<script src="{{ url_for('static', filename='leaflet/snap/leaflet.snap.js') }}"></script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='leaflet/fullscreen/leaflet.fullscreen.css') }}" />
+<script src="{{ url_for('static', filename='leaflet/fullscreen/leaflet.fullscreen.min.js') }}"></script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='leaflet/locate/L.Control.Locate.min.css') }}" />
+<script src="{{ url_for('static', filename='leaflet/locate/L.Control.Locate.min.js') }}"></script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='leaflet/boxzoom/leaflet-control-boxzoom.css') }}" />
+<script src="{{ url_for('static', filename='leaflet/boxzoom/leaflet-control-boxzoom.js') }}"></script>
+
+<!--Bootstrap customizations-->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}" />
+
+<script>
+  $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+</script>
