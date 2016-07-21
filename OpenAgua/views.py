@@ -13,6 +13,8 @@ import json
 
 from HydraLib.PluginLib import JsonConnection
 
+from OpenAgua import app
+
 #
 # connect - this should be done through the interface
 #
@@ -186,13 +188,26 @@ else:
     network = conn.call('add_network', {'net':net})
 activated = conn.call('activate_network', {'network_id':network.id})
 
+session = [123]
 
 @app.route('/')
 def index():
-    return render_template('index.html',
+    if 123 not in session:
+        return render_template('login.html')
+    else:        
+        #return render_template('index.html',
+        return render_template('network.html',
+                               session_id=session_id,
+                               project_name=project_name,
+                               network_name=network_name)
+
+@app.route('/network')
+def network():
+    return render_template('network.html',
                            session_id=session_id,
                            project_name=project_name,
                            network_name=network_name)
+
 
 @app.route('/_load_network')
 def load_network():
