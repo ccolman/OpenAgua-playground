@@ -1,15 +1,9 @@
 from flask import jsonify, Response, json, request, session, redirect, url_for, escape, send_file, render_template
+from functools import wraps
 import random # delete later - used to create randomly distributed test nodes around Monterrey
 import requests
 
-import logging
-
-import pandas
-from pandas.io.json import json_normalize
-import sys
-from os.path import expanduser
-from os.path import join
-import json
+#import json
 
 from HydraLib.PluginLib import JsonConnection
 
@@ -188,22 +182,38 @@ else:
     network = conn.call('add_network', {'net':net})
 activated = conn.call('activate_network', {'network_id':network.id})
 
-session = []
+app.secret_key = app.config['SECRET_KEY']
 
-@app.route('/')
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'logged_in' in session:
+            return f(*args, **kwargs)
+        else:
+            return redirect(url_for('index'))
+    return decorated_function
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    if 123 not in session:
-        return render_template('index.html')
-    else:        
-        #return render_template('index.html',
-        return render_template('network.html',
-                               session_id=session_id,
-                               project_name=project_name,
-                               network_name=network_name)
+    error = None
+    if request.method == 'POST':
+        if request.form['username'] != 'admin' or request.form['password'] != 'admin':
+            error = 'Invalid Credentials. Please try again.'
+        else:
+            session['logged_in'] = True
+            return redirect(url_for('home'))
+    return render_template('index.html', error=error)
 
-@app.route('/network')
-def network():
-    return render_template('network.html',
+@app.route('/logout')
+@login_required
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('index'))
+
+@app.route('/home')
+@login_required
+def home():
+    return render_template('home.html',
                            session_id=session_id,
                            project_name=project_name,
                            network_name=network_name)
