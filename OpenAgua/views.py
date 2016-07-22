@@ -188,12 +188,12 @@ else:
     network = conn.call('add_network', {'net':net})
 activated = conn.call('activate_network', {'network_id':network.id})
 
-session = [123]
+session = []
 
 @app.route('/')
 def index():
     if 123 not in session:
-        return render_template('login.html')
+        return render_template('index.html')
     else:        
         #return render_template('index.html',
         return render_template('network.html',
